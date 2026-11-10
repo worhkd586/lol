@@ -2,13 +2,14 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: 상단 파라미터 바 → 요약 지표 → 종목 시트(가로 스크롤 테이블). 증권사 HTS 시트를 정돈한 느낌 */
+/* Layout: 데이터 상태 바 → 파라미터 → 요약 지표 → 종목 시트(가로 스크롤 테이블). 증권사 HTS 시트를 정돈한 느낌 */
 :root{
   --bg:#f3f5f7; --panel:#ffffff; --fg:#17202a; --muted:#5b6876; --line:#d9dfe5;
   --accent:#1f5f8b; --accent-soft:#e3eef6;
-  --up:#c8312b; --up-soft:#fbe7e5;   /* 한국 시장 관례: 상승/고평가 = 빨강 */
-  --down:#1d5fc4; --down-soft:#e4ecfa; /* 하락/저평가 = 파랑 */
+  --up:#c8312b; --up-soft:#fbe7e5;   /* 한국 시장 관례: 고평가 = 빨강 */
+  --down:#1d5fc4; --down-soft:#e4ecfa; /* 저평가 = 파랑 */
   --warn:#8a5a00; --warn-soft:#fff3d6;
+  --ok:#1f7a4d; --ok-soft:#e2f4ea;
   --font-ui:"IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   --font-num:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 }
@@ -16,19 +17,24 @@
   --bg:#11161c; --panel:#18202a; --fg:#e4e9ee; --muted:#93a1b0; --line:#2a3542;
   --accent:#6fb3e0; --accent-soft:#1c3346;
   --up:#ff7a70; --up-soft:#3a1f1e; --down:#78a8ff; --down-soft:#1b2a45;
-  --warn:#f3c36b; --warn-soft:#3a2f17; color-scheme:dark;}}
+  --warn:#f3c36b; --warn-soft:#3a2f17; --ok:#6fd39e; --ok-soft:#173326; color-scheme:dark;}}
 :root[data-theme="dark"]{
   --bg:#11161c; --panel:#18202a; --fg:#e4e9ee; --muted:#93a1b0; --line:#2a3542;
   --accent:#6fb3e0; --accent-soft:#1c3346;
   --up:#ff7a70; --up-soft:#3a1f1e; --down:#78a8ff; --down-soft:#1b2a45;
-  --warn:#f3c36b; --warn-soft:#3a2f17; color-scheme:dark;}
+  --warn:#f3c36b; --warn-soft:#3a2f17; --ok:#6fd39e; --ok-soft:#173326; color-scheme:dark;}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--fg);font-family:var(--font-ui);font-size:14px;line-height:1.5}
-.wrap{max-width:1280px;margin:0 auto;padding-block:24px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:18px}
+.wrap{max-width:1320px;margin:0 auto;padding-block:24px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:18px}
 header h1{margin:0;font-size:24px;font-weight:700;letter-spacing:-.01em;text-wrap:balance}
-header p{margin:4px 0 0;color:var(--muted);max-width:70ch}
-.notice{background:var(--warn-soft);color:var(--warn);border:1px solid color-mix(in srgb,var(--warn) 30%,transparent);border-radius:6px;padding:10px 12px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-.notice b{font-weight:600}
+header p{margin:4px 0 0;color:var(--muted);max-width:72ch}
+.source{display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 14px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
+.dot.ok{background:var(--ok)} .dot.warn{background:var(--warn)} .dot.busy{background:var(--accent);animation:pulse 1s infinite alternate}
+@keyframes pulse{from{opacity:.35}to{opacity:1}}
+.source .msg{flex:1;min-width:220px}
+.source .msg b{font-weight:600}
+.source .sub{color:var(--muted);font-size:12px}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
 .params{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px 16px}
 .field{display:flex;flex-direction:column;gap:4px;min-width:0}
@@ -45,19 +51,22 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
 .stat .v.up{color:var(--up)} .stat .v.down{color:var(--down)}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .toolbar input[type=text]{max-width:220px}
-.btn{background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:6px 12px;cursor:pointer}
+.btn{background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:6px 12px;cursor:pointer;white-space:nowrap}
 .btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn:disabled{opacity:.5;cursor:default}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--panel)}
 .btn.primary:hover{color:var(--panel);filter:brightness(1.08)}
 .chk{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:13px}
 .tablebox{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:8px}
-table{border-collapse:collapse;width:100%;min-width:1080px}
+table{border-collapse:collapse;width:100%;min-width:1220px}
 th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
 th{font-size:12px;font-weight:500;color:var(--muted);background:var(--panel);position:sticky;top:0;cursor:pointer;user-select:none}
 th.l,td.l{text-align:left}
 th .arrow{color:var(--accent)}
 td input{width:96px;text-align:right;padding:4px 6px;font-family:var(--font-num)}
-td input.div{width:72px}
+td input.div{width:68px}
+td input.sym{width:62px;text-align:left;text-transform:uppercase}
+td input.auto{border-color:color-mix(in srgb,var(--ok) 45%,var(--line))}
 tr:hover td{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
 .name{font-weight:600}
 .code{font-family:var(--font-num);color:var(--muted);font-size:12px;margin-left:6px}
@@ -67,29 +76,36 @@ tr:hover td{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
 .pill.buy{background:var(--up-soft);color:var(--up)}
 .pill.sell{background:var(--down-soft);color:var(--down)}
 .pill.none{background:var(--bg);color:var(--muted);font-weight:400}
+.pill.check{background:var(--warn-soft);color:var(--warn)}
+.ts{font-size:12px;color:var(--muted);font-family:var(--font-num)}
 .del{background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 6px}
 .del:hover{color:var(--up)}
 details{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 16px}
 details summary{cursor:pointer;font-weight:600}
 details textarea{min-height:110px;font-family:var(--font-num);margin-top:8px}
-.help{color:var(--muted);font-size:13px;max-width:75ch}
+.help{color:var(--muted);font-size:13px;max-width:78ch}
 .formula{display:grid;gap:6px;font-size:13px}
-.formula code{font-family:var(--font-num);background:var(--bg);padding:1px 6px;border-radius:4px}
-.addrow{display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;margin-top:8px}
-@media (max-width:560px){.addrow{grid-template-columns:1fr 1fr}}
-@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.formula code,.help code{font-family:var(--font-num);background:var(--bg);padding:1px 6px;border-radius:4px}
+.addrow{display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:8px;margin-top:8px}
+.finder{display:grid;grid-template-columns:2fr 2fr auto;gap:8px;margin-top:8px}
+@media (max-width:640px){.addrow,.finder{grid-template-columns:1fr 1fr}}
+.results{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.results button{font-size:13px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 
 <div class="wrap">
   <header>
     <h1>주식선물 현선물 차익</h1>
-    <p>KRX 주식선물 기초자산별로 현물가와 선물가를 넣으면 시장 베이시스, 이론 베이시스, 괴리율과 거래비용을 뺀 차익거래 손익을 계산합니다.</p>
+    <p>KRX 주식선물 기초자산의 현물가와 근월물 선물가를 TradingView에서 받아와 시장 베이시스, 이론 베이시스, 괴리율, 거래비용을 뺀 차익거래 손익을 계산합니다. 1시간마다 다시 받아옵니다.</p>
   </header>
 
-  <div class="notice" id="sampleNotice" hidden>
-    <span><b>예시 값이 표시되고 있습니다.</b> 실제 시세가 아닙니다. HTS나 KRX에서 받은 현재가로 바꿔 넣으세요.</span>
-    <button class="btn" id="clearPrices" type="button">가격 모두 지우기</button>
-  </div>
+  <section class="source" aria-live="polite">
+    <span class="dot" id="srcDot"></span>
+    <div class="msg"><div id="srcMsg"><b>TradingView 연결 확인 중</b></div><div class="sub" id="srcSub">시세는 TradingView 플랜에 따라 지연될 수 있습니다(KRX 기본 20분 지연).</div></div>
+    <label class="chk"><input type="checkbox" id="autoRefresh" checked> 1시간마다 자동 갱신</label>
+    <button class="btn primary" id="refreshNow" type="button" disabled>지금 갱신</button>
+  </section>
 
   <section class="panel">
     <div class="params">
@@ -104,7 +120,7 @@ details textarea{min-height:110px;font-family:var(--font-num);margin-top:8px}
   </section>
 
   <section class="stats" aria-label="요약">
-    <div class="stat"><div class="k">가격 입력 종목</div><div class="v" id="sCount">0</div></div>
+    <div class="stat"><div class="k">현물·선물 모두 있는 종목</div><div class="v" id="sCount">0</div></div>
     <div class="stat"><div class="k">매수차익 기회 (선물 고평가)</div><div class="v up" id="sBuy">0</div></div>
     <div class="stat"><div class="k">매도차익 기회 (선물 저평가)</div><div class="v down" id="sSell">0</div></div>
     <div class="stat"><div class="k">최대 |괴리율|</div><div class="v" id="sMax">–</div></div>
@@ -112,10 +128,9 @@ details textarea{min-height:110px;font-family:var(--font-num);margin-top:8px}
 
   <div class="toolbar">
     <input type="text" id="search" placeholder="종목명·코드 검색" aria-label="종목 검색">
-    <label class="chk"><input type="checkbox" id="onlyFilled"> 가격 입력된 종목만</label>
+    <label class="chk"><input type="checkbox" id="onlyFilled"> 계산된 종목만</label>
     <label class="chk"><input type="checkbox" id="onlySignal"> 차익 신호만</label>
     <span style="flex:1"></span>
-    <button class="btn" id="loadSample" type="button">예시 값 채우기</button>
     <button class="btn" id="copyCsv" type="button">결과 CSV 복사</button>
   </div>
 
@@ -126,10 +141,21 @@ details textarea{min-height:110px;font-family:var(--font-num);margin-top:8px}
     </table>
   </div>
 
-  <details open>
-    <summary>시세 한꺼번에 붙여넣기</summary>
-    <p class="help">한 줄에 한 종목씩 <code class="num">종목코드 또는 종목명, 현물가, 선물가[, 예상배당]</code> 형식으로 붙여넣으세요. 탭, 쉼표, 공백 구분 모두 됩니다. 엑셀이나 HTS에서 복사한 열도 그대로 들어갑니다. 목록에 없는 종목은 새로 추가됩니다.</p>
-    <textarea id="paste" placeholder="005930	71200	71350&#10;SK하이닉스, 182000, 182600&#10;035420 205000 204500 0"></textarea>
+  <details id="finderBox">
+    <summary>선물 심볼 찾기 (TradingView)</summary>
+    <p class="help">선물 심볼이 비어 있는 종목은 현물가만 자동으로 채워집니다. TradingView의 KRX 주식선물은 영문 약칭으로 검색됩니다. 예: <code>SDI Futures</code>, <code>MOBIS Futures</code>, <code>KAKAO Futures</code>. 결과를 누르면 선택한 종목에 심볼이 들어가고 다음 갱신부터 선물가를 받아옵니다.</p>
+    <div class="finder">
+      <select id="finderRow" aria-label="심볼을 넣을 종목"></select>
+      <input type="text" id="finderQuery" placeholder="영문 약칭 + Futures" aria-label="검색어">
+      <button class="btn" id="finderGo" type="button">검색</button>
+    </div>
+    <div class="results" id="finderResults"></div>
+  </details>
+
+  <details>
+    <summary>시세 직접 붙여넣기</summary>
+    <p class="help">TradingView에 없는 종목은 한 줄에 한 종목씩 <code>종목코드 또는 종목명, 현물가, 선물가[, 예상배당]</code> 형식으로 붙여넣으세요. 직접 넣은 가격은 다음 자동 갱신 때 TradingView 값으로 바뀝니다(받아온 값이 있는 경우).</p>
+    <textarea id="paste" placeholder="005930	198400	198600&#10;SK하이닉스, 1219000, 1218000"></textarea>
     <div class="toolbar" style="margin-top:8px"><button class="btn primary" id="applyPaste" type="button">반영하기</button><span class="help" id="pasteMsg"></span></div>
   </details>
 
@@ -138,13 +164,14 @@ details textarea{min-height:110px;font-family:var(--font-num);margin-top:8px}
     <div class="addrow">
       <input type="text" id="newName" placeholder="종목명" aria-label="새 종목명">
       <input type="text" id="newCode" placeholder="종목코드 6자리" aria-label="새 종목코드" class="num">
+      <input type="text" id="newTv" placeholder="선물 심볼 (예: S11)" aria-label="새 종목 선물 심볼" class="num">
       <select id="newMkt" aria-label="시장"><option>KOSPI</option><option>KOSDAQ</option></select>
       <button class="btn" id="addRow" type="button">추가</button>
     </div>
   </details>
 
   <details>
-    <summary>계산 방법</summary>
+    <summary>계산 방법과 데이터</summary>
     <div class="formula">
       <div>이론선물가 <code>F* = S × (1 + r × d / 365) − D</code> &nbsp; S 현물가, r 이자율, d 만기까지 남은 일수, D 만기 전 배당락 예상 배당금</div>
       <div>시장 베이시스 <code>F − S</code>, 이론 베이시스 <code>F* − S</code>, 괴리 <code>F − F*</code>, 괴리율 <code>(F − F*) / F*</code></div>
@@ -152,39 +179,43 @@ details textarea{min-height:110px;font-family:var(--font-num);margin-top:8px}
       <div>매수차익(현물 매수 + 선물 매도) 순손익 <code>(F − F*) − 거래비용</code></div>
       <div>매도차익(현물 대차매도 + 선물 매수) 순손익 <code>(F* − F) − 거래비용 − S × 대차수수료 × d / 365</code></div>
       <div>계약당 손익은 주당 손익에 거래승수(기본 10주)를 곱한 값입니다.</div>
-      <p class="help">만기일은 결제월 둘째 목요일로 계산하며, 휴장일로 앞당겨지는 경우는 반영하지 않습니다. 상장 종목 목록은 수시로 바뀌므로 KRX 정보데이터시스템에서 확인하세요. 거래세율, 수수료, 대차 가능 여부는 증권사와 시점에 따라 다릅니다. 투자 판단의 근거가 아닌 참고용 계산입니다.</p>
+      <p class="help">현물가는 TradingView <code>KRX:종목코드</code>의 현재가, 선물가는 근월물 연속 심볼 <code>KRX:심볼1!</code>의 최근 1시간봉 종가입니다. 두 값의 시각이 조금 다를 수 있어 표에 선물가 기준 시각을 함께 표시합니다. 선물가가 현물가와 10% 넘게 차이 나면 심볼이 잘못됐을 가능성이 커서 "심볼 확인"으로 표시하고 신호에서 뺍니다. 만기일은 결제월 둘째 목요일로 계산하며 휴장일 조정은 반영하지 않습니다. 거래세율, 수수료, 대차 가능 여부는 증권사와 시점에 따라 다릅니다. 투자 판단의 근거가 아닌 참고용 계산입니다.</p>
     </div>
   </details>
 </div>
 
 <script>
+const SERVER="TradinviewMCP";
+const T_BATCH="mcp-tv-get-symbol-data-batch", T_OHLCV="mcp-tv-get-ohlcv", T_SEARCH="mcp-tv-search-symbols";
+const HOUR=3600e3;
+// [종목명, 코드, 시장, TradingView 선물 심볼(확인된 것만)]
 const BASE = [
-["삼성전자","005930","KOSPI"],["SK하이닉스","000660","KOSPI"],["LG에너지솔루션","373220","KOSPI"],["삼성바이오로직스","207940","KOSPI"],
-["현대차","005380","KOSPI"],["기아","000270","KOSPI"],["셀트리온","068270","KOSPI"],["KB금융","105560","KOSPI"],["신한지주","055550","KOSPI"],
-["하나금융지주","086790","KOSPI"],["우리금융지주","316140","KOSPI"],["기업은행","024110","KOSPI"],["카카오뱅크","323410","KOSPI"],["메리츠금융지주","138040","KOSPI"],
-["삼성생명","032830","KOSPI"],["삼성화재","000810","KOSPI"],["미래에셋증권","006800","KOSPI"],["한국금융지주","071050","KOSPI"],["키움증권","039490","KOSPI"],["삼성증권","016360","KOSPI"],
-["POSCO홀딩스","005490","KOSPI"],["포스코퓨처엠","003670","KOSPI"],["포스코인터내셔널","047050","KOSPI"],["NAVER","035420","KOSPI"],["카카오","035720","KOSPI"],["카카오페이","377300","KOSPI"],
-["LG화학","051910","KOSPI"],["삼성SDI","006400","KOSPI"],["현대모비스","012330","KOSPI"],["삼성물산","028260","KOSPI"],["한국전력","015760","KOSPI"],
-["SK이노베이션","096770","KOSPI"],["S-Oil","010950","KOSPI"],["SK텔레콤","017670","KOSPI"],["KT","030200","KOSPI"],["LG유플러스","032640","KOSPI"],
-["LG전자","066570","KOSPI"],["LG이노텍","011070","KOSPI"],["삼성전기","009150","KOSPI"],["삼성SDS","018260","KOSPI"],["SK","034730","KOSPI"],["LG","003550","KOSPI"],["SK스퀘어","402340","KOSPI"],
-["한화에어로스페이스","012450","KOSPI"],["한국항공우주","047810","KOSPI"],["현대로템","064350","KOSPI"],["HD현대중공업","329180","KOSPI"],["HD한국조선해양","009540","KOSPI"],
-["삼성중공업","010140","KOSPI"],["한화오션","042660","KOSPI"],["두산에너빌리티","034020","KOSPI"],["효성중공업","298040","KOSPI"],["LS ELECTRIC","010120","KOSPI"],
-["고려아연","010130","KOSPI"],["롯데케미칼","011170","KOSPI"],["금호석유","011780","KOSPI"],["한화솔루션","009830","KOSPI"],["HMM","011200","KOSPI"],["대한항공","003490","KOSPI"],
-["현대글로비스","086280","KOSPI"],["현대건설","000720","KOSPI"],["크래프톤","259960","KOSPI"],["엔씨소프트","036570","KOSPI"],["넷마블","251270","KOSPI"],["하이브","352820","KOSPI"],
-["아모레퍼시픽","090430","KOSPI"],["KT&G","033780","KOSPI"],["유한양행","000100","KOSPI"],["CJ제일제당","097950","KOSPI"],["오리온","271560","KOSPI"],["삼양식품","003230","KOSPI"],
-["이마트","139480","KOSPI"],["강원랜드","035250","KOSPI"],["한미반도체","042700","KOSPI"],
-["에코프로비엠","247540","KOSDAQ"],["에코프로","086520","KOSDAQ"],["알테오젠","196170","KOSDAQ"],["HLB","028300","KOSDAQ"],["엘앤에프","066970","KOSDAQ"],
-["리가켐바이오","141080","KOSDAQ"],["레인보우로보틱스","277810","KOSDAQ"],["리노공업","058470","KOSDAQ"],["펄어비스","263750","KOSDAQ"],["클래시스","214150","KOSDAQ"],["파마리서치","214450","KOSDAQ"]
+["삼성전자","005930","KOSPI","S11"],["SK하이닉스","000660","KOSPI","S50"],["LG에너지솔루션","373220","KOSPI","SF5"],["삼성바이오로직스","207940","KOSPI",""],
+["현대차","005380","KOSPI","S16"],["기아","000270","KOSPI","S19"],["셀트리온","068270","KOSPI",""],["KB금융","105560","KOSPI","S46"],["신한지주","055550","KOSPI",""],
+["하나금융지주","086790","KOSPI",""],["우리금융지주","316140","KOSPI",""],["기업은행","024110","KOSPI",""],["카카오뱅크","323410","KOSPI","SF6"],["메리츠금융지주","138040","KOSPI",""],
+["삼성생명","032830","KOSPI",""],["삼성화재","000810","KOSPI",""],["미래에셋증권","006800","KOSPI",""],["한국금융지주","071050","KOSPI",""],["키움증권","039490","KOSPI",""],["삼성증권","016360","KOSPI",""],
+["POSCO홀딩스","005490","KOSPI","S13"],["포스코퓨처엠","003670","KOSPI",""],["포스코인터내셔널","047050","KOSPI",""],["NAVER","035420","KOSPI","S56"],["카카오","035720","KOSPI","SCF"],["카카오페이","377300","KOSPI",""],["카카오게임즈","293490","KOSDAQ","SEX"],
+["LG화학","051910","KOSPI","S47"],["삼성SDI","006400","KOSPI","S22"],["현대모비스","012330","KOSPI","S20"],["삼성물산","028260","KOSPI",""],["한국전력","015760","KOSPI",""],
+["SK이노베이션","096770","KOSPI",""],["S-Oil","010950","KOSPI",""],["SK텔레콤","017670","KOSPI","S12"],["KT","030200","KOSPI",""],["LG유플러스","032640","KOSPI","SB0"],
+["LG전자","066570","KOSPI","S24"],["LG디스플레이","034220","KOSPI","S45"],["LG이노텍","011070","KOSPI","SBY"],["LG생활건강","051900","KOSPI","SCR"],["LG씨엔에스","064400","KOSPI","S2K"],["삼성전기","009150","KOSPI",""],["삼성SDS","018260","KOSPI",""],
+["SK","034730","KOSPI","SC1"],["LG","003550","KOSPI","S34"],["SK스퀘어","402340","KOSPI",""],["SKC","011790","KOSPI","SEJ"],["SK바이오팜","326030","KOSPI","SFF"],["SK바이오사이언스","302440","KOSPI","SF9"],
+["한화에어로스페이스","012450","KOSPI",""],["한국항공우주","047810","KOSPI",""],["현대로템","064350","KOSPI",""],["HD현대중공업","329180","KOSPI",""],["HD한국조선해양","009540","KOSPI",""],
+["삼성중공업","010140","KOSPI",""],["한화오션","042660","KOSPI",""],["두산에너빌리티","034020","KOSPI",""],["효성중공업","298040","KOSPI",""],["LS ELECTRIC","010120","KOSPI",""],
+["고려아연","010130","KOSPI",""],["롯데케미칼","011170","KOSPI",""],["금호석유","011780","KOSPI",""],["한화솔루션","009830","KOSPI",""],["HMM","011200","KOSPI","SFA"],["대한항공","003490","KOSPI",""],
+["현대글로비스","086280","KOSPI",""],["현대건설","000720","KOSPI",""],["크래프톤","259960","KOSPI",""],["엔씨소프트","036570","KOSPI",""],["넷마블","251270","KOSPI",""],["하이브","352820","KOSPI",""],
+["아모레퍼시픽","090430","KOSPI",""],["KT&G","033780","KOSPI",""],["유한양행","000100","KOSPI",""],["CJ제일제당","097950","KOSPI",""],["오리온","271560","KOSPI",""],["삼양식품","003230","KOSPI",""],
+["이마트","139480","KOSPI",""],["강원랜드","035250","KOSPI",""],["한미반도체","042700","KOSPI",""],
+["에코프로비엠","247540","KOSDAQ",""],["에코프로","086520","KOSDAQ",""],["알테오젠","196170","KOSDAQ",""],["HLB","028300","KOSDAQ",""],["엘앤에프","066970","KOSDAQ",""],
+["리가켐바이오","141080","KOSDAQ",""],["레인보우로보틱스","277810","KOSDAQ",""],["리노공업","058470","KOSDAQ",""],["펄어비스","263750","KOSDAQ",""],["클래시스","214150","KOSDAQ",""],["파마리서치","214450","KOSDAQ",""]
 ];
-const SAMPLE = {"005930":[71200,71350,0],"000660":[182000,182600,0],"005380":[215000,214200,0],"035420":[205000,205300,0],"105560":[98000,97600,0],"373220":[365000,366500,0]};
 
-const KEY="kr-stock-futures-basis-v1";
+const KEY="kr-stock-futures-basis-v2";
 const $=id=>document.getElementById(id);
-let state={rows:BASE.map(([name,code,mkt])=>({name,code,mkt,s:"",f:"",d:""})),params:{},sample:false,sort:{key:"gapPct",dir:-1}};
+let state={rows:BASE.map(([name,code,mkt,tv])=>({name,code,mkt,tv,s:"",f:"",d:"",sAuto:false,fAuto:false,fT:null})),params:{},sort:{key:"gapPct",dir:-1},lastFetch:null};
+let mcp=null, busy=false, timer=null;
 
-function load(){try{const s=JSON.parse(localStorage.getItem(KEY)||"null");if(s&&Array.isArray(s.rows))state={...state,...s};else{applySample();}}catch(e){applySample();}}
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY)||"null");if(s&&Array.isArray(s.rows))state={...state,...s};}catch(e){}}
 function save(){try{state.params=readParams(true);localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
-function applySample(){state.rows.forEach(r=>{const v=SAMPLE[r.code];if(v){r.s=v[0];r.f=v[1];r.d=v[2];}});state.sample=true;}
 
 // 결제월: 둘째 목요일
 function secondThursday(y,m){const d=new Date(y,m,1);const off=(4-d.getDay()+7)%7;return new Date(y,m,1+off+7);}
@@ -194,13 +225,13 @@ function buildMonths(){
   if(secondThursday(y,m)<today){m++;if(m>11){m=0;y++;}}
   const sel=$("month");sel.innerHTML="";
   for(let i=0;i<6;i++){const e=secondThursday(y,m);const o=document.createElement("option");
-    o.value=e.toISOString().slice(0,10)+"|"+e.getTime();
+    o.value=String(e.getTime());
     o.textContent=`${y}년 ${m+1}월물 (만기 ${m+1}/${e.getDate()})`+(i===0?" · 근월":"");sel.appendChild(o);m++;if(m>11){m=0;y++;}}
 }
-function daysLeft(){const t=+$("month").value.split("|")[1];const now=new Date();const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());return Math.max(0,Math.round((t-today)/864e5));}
+function daysLeft(){const t=+$("month").value;const now=new Date();const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());return Math.max(0,Math.round((t-today)/864e5));}
 
-function readParams(raw){const ids=["rate","tax","cs","cf","lend","mult"];const o={};ids.forEach(i=>o[i]=raw?$(i).value:parseFloat($(i).value)||0);if(raw)o.month=$("month").selectedIndex;return o;}
-function restoreParams(){const p=state.params||{};["rate","tax","cs","cf","lend","mult"].forEach(i=>{if(p[i]!==undefined&&p[i]!=="")$(i).value=p[i];});if(p.month>=0&&p.month<$("month").options.length)$("month").selectedIndex=p.month;}
+function readParams(raw){const ids=["rate","tax","cs","cf","lend","mult"];const o={};ids.forEach(i=>o[i]=raw?$(i).value:parseFloat($(i).value)||0);if(raw){o.month=$("month").selectedIndex;o.auto=$("autoRefresh").checked;}return o;}
+function restoreParams(){const p=state.params||{};["rate","tax","cs","cf","lend","mult"].forEach(i=>{if(p[i]!==undefined&&p[i]!=="")$(i).value=p[i];});if(p.month>=0&&p.month<$("month").options.length)$("month").selectedIndex=p.month;if(p.auto===false)$("autoRefresh").checked=false;}
 
 function calc(r,p,d){
   const S=parseFloat(r.s),F=parseFloat(r.f),D=parseFloat(r.d)||0;
@@ -210,19 +241,22 @@ function calc(r,p,d){
   const cost=S*(2*p.cs/100+p.tax/100)+F*2*p.cf/100;
   const lendCost=S*(p.lend/100)*d/365;
   const buyNet=(F-Fs)-cost, sellNet=(Fs-F)-cost-lendCost;
+  const suspect=Math.abs(F/S-1)>0.10;
   let sig="none",net=Math.max(buyNet,sellNet);
-  if(buyNet>0)sig="buy";else if(sellNet>0)sig="sell";
-  return {S,F,Fs,mb:F-S,tb:Fs-S,gap:F-Fs,gapPct:(F-Fs)/Fs*100,cost,sig,net,netC:net*p.mult,buyNet,sellNet};
+  if(suspect)sig="check";else if(buyNet>0)sig="buy";else if(sellNet>0)sig="sell";
+  return {S,F,Fs,mb:F-S,tb:Fs-S,gap:F-Fs,gapPct:(F-Fs)/Fs*100,cost,sig,net,netC:net*p.mult};
 }
 
 const COLS=[
- {k:"name",t:"종목",l:1},{k:"s",t:"현물가"},{k:"f",t:"선물가"},{k:"d",t:"예상배당"},
+ {k:"name",t:"종목",l:1},{k:"tv",t:"선물 심볼",l:1},{k:"s",t:"현물가"},{k:"f",t:"선물가"},{k:"fT",t:"선물 기준",l:1},{k:"d",t:"예상배당"},
  {k:"Fs",t:"이론선물가"},{k:"mb",t:"시장 베이시스"},{k:"tb",t:"이론 베이시스"},{k:"gap",t:"괴리"},{k:"gapPct",t:"괴리율"},
  {k:"cost",t:"거래비용/주"},{k:"sig",t:"신호",l:1},{k:"netC",t:"계약당 순손익"},{k:"x",t:""}
 ];
 const fmt=(v,dp=0)=>v.toLocaleString("ko-KR",{minimumFractionDigits:dp,maximumFractionDigits:dp});
 const sgn=(v,dp=0)=>(v>0?"+":"")+fmt(v,dp);
 const cls=v=>v>0?"pos":v<0?"neg":"dim";
+const hm=t=>{if(!t)return "";const d=new Date(t);return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;};
+function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 
 function renderHead(){
   $("thead").innerHTML=COLS.map(c=>{const a=state.sort.key===c.k?`<span class="arrow">${state.sort.dir>0?" ▲":" ▼"}</span>`:"";
@@ -231,73 +265,154 @@ function renderHead(){
 function render(){
   const p=readParams(),d=daysLeft();
   $("expiryNote").textContent=`만기까지 ${d}일`;
-  $("sampleNotice").hidden=!state.sample;
   const q=$("search").value.trim().toLowerCase(),onlyF=$("onlyFilled").checked,onlyS=$("onlySignal").checked;
   let list=state.rows.map((r,i)=>({r,i,c:calc(r,p,d)}));
-  // summary over all rows
-  const filled=list.filter(x=>x.c);
+  const filled=list.filter(x=>x.c&&x.c.sig!=="check");
   $("sCount").textContent=filled.length;
   $("sBuy").textContent=filled.filter(x=>x.c.sig==="buy").length;
   $("sSell").textContent=filled.filter(x=>x.c.sig==="sell").length;
   const mx=filled.reduce((a,x)=>Math.abs(x.c.gapPct)>Math.abs(a)?x.c.gapPct:a,0);
   $("sMax").textContent=filled.length?sgn(mx,2)+"%":"–";
-  list=list.filter(x=>(!q||x.r.name.toLowerCase().includes(q)||x.r.code.includes(q))&&(!onlyF||x.c)&&(!onlyS||(x.c&&x.c.sig!=="none")));
+  list=list.filter(x=>(!q||x.r.name.toLowerCase().includes(q)||x.r.code.includes(q)||(x.r.tv||"").toLowerCase().includes(q))&&(!onlyF||x.c)&&(!onlyS||(x.c&&(x.c.sig==="buy"||x.c.sig==="sell"))));
   const {key,dir}=state.sort;
   list.sort((a,b)=>{
-    if(key==="name")return dir*a.r.name.localeCompare(b.r.name,"ko");
-    if(["s","f","d"].includes(key)){const va=parseFloat(a.r[key]),vb=parseFloat(b.r[key]);return (isNaN(va)?1:isNaN(vb)?-1:dir*(va-vb));}
+    if(key==="name"||key==="tv")return dir*String(a.r[key]||"").localeCompare(String(b.r[key]||""),"ko");
+    if(["s","f","d","fT"].includes(key)){const va=parseFloat(a.r[key]),vb=parseFloat(b.r[key]);return (isNaN(va)?1:isNaN(vb)?-1:dir*(va-vb));}
     if(!a.c&&!b.c)return a.i-b.i; if(!a.c)return 1; if(!b.c)return -1;
-    if(key==="sig"){const o={buy:0,sell:1,none:2};return dir*(o[a.c.sig]-o[b.c.sig]);}
+    if(key==="sig"){const o={buy:0,sell:1,none:2,check:3};return dir*(o[a.c.sig]-o[b.c.sig]);}
     if(key==="gapPct")return dir*(Math.abs(a.c.gapPct)-Math.abs(b.c.gapPct));
     return dir*(a.c[key]-b.c[key]);
   });
-  const sigTxt={buy:"매수차익",sell:"매도차익",none:"관망"};
+  const sigTxt={buy:"매수차익",sell:"매도차익",none:"관망",check:"심볼 확인"};
   $("tbody").innerHTML=list.map(({r,i,c})=>`<tr data-i="${i}">
-    <td class="l"><span class="name">${esc(r.name)}</span><span class="code">${esc(r.code)}</span> <span class="mkt">${r.mkt}</span></td>
-    <td><input aria-label="${esc(r.name)} 현물가" id="s-${i}" data-f="s" type="number" inputmode="decimal" value="${r.s}"></td>
-    <td><input aria-label="${esc(r.name)} 선물가" id="f-${i}" data-f="f" type="number" inputmode="decimal" value="${r.f}"></td>
-    <td><input class="div" aria-label="${esc(r.name)} 예상배당" id="d-${i}" data-f="d" type="number" inputmode="decimal" value="${r.d}" placeholder="0"></td>
+    <td class="l"><span class="name">${esc(r.name)}</span><span class="code">${esc(r.code)}</span> <span class="mkt">${esc(r.mkt)}</span></td>
+    <td class="l"><input class="sym" aria-label="${esc(r.name)} 선물 심볼" id="tv-${i}" data-f="tv" type="text" value="${esc(r.tv)}" placeholder="—"></td>
+    <td><input class="${r.sAuto?"auto":""}" aria-label="${esc(r.name)} 현물가" id="s-${i}" data-f="s" type="number" inputmode="decimal" value="${esc(r.s)}"></td>
+    <td><input class="${r.fAuto?"auto":""}" aria-label="${esc(r.name)} 선물가" id="f-${i}" data-f="f" type="number" inputmode="decimal" value="${esc(r.f)}"></td>
+    <td class="l ts">${r.fAuto?hm(r.fT):(r.f?"직접 입력":"")}</td>
+    <td><input class="div" aria-label="${esc(r.name)} 예상배당" id="d-${i}" data-f="d" type="number" inputmode="decimal" value="${esc(r.d)}" placeholder="0"></td>
     ${c?`<td class="num">${fmt(c.Fs,1)}</td><td class="num ${cls(c.mb)}">${sgn(c.mb,0)}</td><td class="num ${cls(c.tb)}">${sgn(c.tb,1)}</td>
     <td class="num ${cls(c.gap)}">${sgn(c.gap,1)}</td><td class="num ${cls(c.gapPct)}">${sgn(c.gapPct,2)}%</td><td class="num dim">${fmt(c.cost,1)}</td>
-    <td class="l"><span class="pill ${c.sig}">${sigTxt[c.sig]}</span></td><td class="num ${c.sig==="none"?"dim":cls(c.netC)}">${sgn(c.netC,0)}원</td>`
-    :`<td class="dim" colspan="8" style="text-align:left">현물가와 선물가를 입력하세요</td>`}
+    <td class="l"><span class="pill ${c.sig}">${sigTxt[c.sig]}</span></td><td class="num ${(c.sig==="buy"||c.sig==="sell")?cls(c.netC):"dim"}">${(c.sig==="check")?"–":sgn(c.netC,0)+"원"}</td>`
+    :`<td class="dim" colspan="8" style="text-align:left">${r.s&&!r.tv?"선물 심볼을 넣거나 선물가를 입력하세요":"시세 대기 중"}</td>`}
     <td><button class="del" type="button" title="행 삭제" aria-label="${esc(r.name)} 삭제" data-del="${i}">×</button></td></tr>`).join("");
+  $("finderRow").innerHTML=state.rows.map((r,i)=>`<option value="${i}">${esc(r.name)}${r.tv?` (${esc(r.tv)})`:" · 심볼 없음"}</option>`).join("");
 }
-function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 
-// events
-$("tbody").addEventListener("change",e=>{const t=e.target;if(!t.dataset.f)return;const i=+t.closest("tr").dataset.i;state.rows[i][t.dataset.f]=t.value;state.sample=false;save();
-  const id=t.id;render();const n=document.getElementById(id);if(n)n.focus();});
+// ---- TradingView via MCP ----
+function setSource(kind,msg,sub){$("srcDot").className="dot "+(kind||"");$("srcMsg").innerHTML=msg;if(sub!==undefined)$("srcSub").textContent=sub;}
+function errText(e){
+  const c=e&&e.code;
+  if(c==="server_not_connected"||c==="selection_required")return `<b>TradingView 커넥터가 연결되어 있지 않습니다.</b> claude.ai 설정 → 커넥터에서 ${SERVER}를 연결하세요.`;
+  if(c==="needs_reauth")return `<b>TradingView 인증이 만료됐습니다.</b> claude.ai 설정 → 커넥터에서 ${SERVER}를 다시 연결하세요.`;
+  if(c==="not_in_manifest"||c==="consent_required")return `<b>이 페이지에서 TradingView 사용이 허용되지 않았습니다.</b> 페이지의 권한 메뉴에서 허용한 뒤 "지금 갱신"을 누르세요.`;
+  if(c==="approval_required")return `<b>TradingView 조회 승인이 필요합니다.</b> "지금 갱신"을 눌러 승인하세요.`;
+  if(c==="blocked_by_policy")return `<b>조직 정책으로 TradingView 도구가 막혀 있습니다.</b>`;
+  if(c==="server_unavailable"||c==="upstream_error")return `<b>TradingView 서버가 응답하지 않았습니다.</b> 잠시 후 다시 갱신하세요.`;
+  return `<b>시세를 받지 못했습니다.</b> ${esc(e&&e.message||"")}`;
+}
+const FATAL=new Set(["server_not_connected","selection_required","needs_reauth","not_in_manifest","consent_required","approval_required","blocked_by_policy","not_granted","capability_disabled","capability_removed"]);
+
+async function pool(items,n,fn){const out=[];let k=0;await Promise.all(Array.from({length:Math.min(n,items.length)},async()=>{while(k<items.length){const j=k++;out[j]=await fn(items[j]).catch(e=>({__err:e}));}}));return out;}
+
+async function refresh(force){
+  if(!mcp||busy)return; busy=true; $("refreshNow").disabled=true;
+  setSource("busy","<b>TradingView에서 시세 받는 중…</b>");
+  const opts={cache:{staleTime:force?0:55*60e3,gcTime:2*HOUR,refresh:!!force}};
+  let okS=0,okF=0,failF=0,fatal=null,stamp=null;
+  try{
+    // 현물: 50개씩 묶어서
+    const coded=state.rows.filter(r=>/^[0-9A-Z]{6}$/.test(r.code));
+    for(let i=0;i<coded.length;i+=50){
+      const chunk=coded.slice(i,i+50);
+      try{
+        const res=await mcp.callTool(SERVER,T_BATCH,{symbols:chunk.map(r=>"KRX:"+r.code),columns:["close","update_mode"]},opts);
+        const data=(res.payload&&res.payload.data)||{};
+        stamp=stamp||(res.cache&&res.cache.storedAt)||Date.now();
+        chunk.forEach(r=>{const q=data["KRX:"+r.code];if(q&&q.close>0){r.s=q.close;r.sAuto=true;okS++;}});
+      }catch(e){if(FATAL.has(e.code)){fatal=e;throw e;}}
+    }
+    // 선물: 근월물 연속 심볼의 최근 1시간봉
+    const fut=state.rows.filter(r=>r.tv);
+    const res=await pool(fut,4,r=>mcp.callTool(SERVER,T_OHLCV,{symbol:`KRX:${r.tv.toUpperCase()}1!`,interval:"1h",count:1,summary:true},opts));
+    res.forEach((x,j)=>{const r=fut[j];
+      if(x&&x.__err){failF++;if(FATAL.has(x.__err.code))fatal=x.__err;return;}
+      const s=x&&x.payload&&x.payload.summary;
+      if(s&&s.last_close>0){r.f=s.last_close;r.fAuto=true;r.fT=(s.last_t||0)*1000||null;okF++;}else failF++;});
+    if(fatal)throw fatal;
+    state.lastFetch=stamp||Date.now();save();
+    setSource(okS?"ok":"warn",`<b>${hm(state.lastFetch)} 기준 시세</b> · 현물 ${okS}종목, 선물 ${okF}종목`+(failF?` · 선물 ${failF}종목은 받지 못함(심볼 확인)`:""),
+      $("autoRefresh").checked?"1시간마다 자동으로 다시 받아옵니다. 시세는 TradingView 플랜에 따라 지연될 수 있습니다.":"자동 갱신이 꺼져 있습니다.");
+  }catch(e){
+    setSource("warn",errText(e));
+  }finally{busy=false;$("refreshNow").disabled=false;render();}
+}
+function schedule(){clearInterval(timer);timer=null;if($("autoRefresh").checked&&mcp)timer=setInterval(()=>refresh(false),HOUR);}
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&mcp&&$("autoRefresh").checked&&(!state.lastFetch||Date.now()-state.lastFetch>HOUR))refresh(false);});
+
+async function initMcp(){
+  try{mcp=window.claude&&window.claude.use?await window.claude.use("mcp"):null;}catch(e){mcp=null;}
+  if(!mcp){setSource("warn","<b>이 화면에서는 TradingView에 연결할 수 없습니다.</b> claude.ai에서 페이지를 열면 시세를 자동으로 받아옵니다. 지금은 가격을 직접 입력하거나 붙여넣어 계산할 수 있습니다.");return;}
+  $("refreshNow").disabled=false;
+  schedule();
+  refresh(false);
+}
+
+// ---- events ----
+$("tbody").addEventListener("change",e=>{const t=e.target;if(!t.dataset.f)return;const i=+t.closest("tr").dataset.i;const r=state.rows[i];const f=t.dataset.f;
+  r[f]=f==="tv"?t.value.trim().toUpperCase():t.value;
+  if(f==="s")r.sAuto=false; if(f==="f"){r.fAuto=false;r.fT=null;} if(f==="tv"){r.fAuto=false;}
+  save();const id=t.id;render();const n=document.getElementById(id);if(n)n.focus();});
 $("tbody").addEventListener("click",e=>{const b=e.target.closest("[data-del]");if(!b)return;state.rows.splice(+b.dataset.del,1);save();render();});
 $("thead").addEventListener("click",e=>{const th=e.target.closest("th");if(!th||th.dataset.k==="x")return;const k=th.dataset.k;
-  state.sort=state.sort.key===k?{key:k,dir:-state.sort.dir}:{key:k,dir:k==="name"?1:-1};save();renderHead();render();});
+  state.sort=state.sort.key===k?{key:k,dir:-state.sort.dir}:{key:k,dir:(k==="name"||k==="tv")?1:-1};save();renderHead();render();});
 ["rate","tax","cs","cf","lend","mult","month"].forEach(id=>$(id).addEventListener("input",()=>{save();render();}));
 ["search","onlyFilled","onlySignal"].forEach(id=>$(id).addEventListener("input",render));
-$("clearPrices").addEventListener("click",()=>{state.rows.forEach(r=>{r.s="";r.f="";r.d="";});state.sample=false;save();render();});
-$("loadSample").addEventListener("click",()=>{applySample();save();render();});
+$("autoRefresh").addEventListener("change",()=>{save();schedule();});
+$("refreshNow").addEventListener("click",()=>refresh(true));
+
+$("finderGo").addEventListener("click",async()=>{
+  const q=$("finderQuery").value.trim();const box=$("finderResults");
+  if(!q){$("finderQuery").focus();return;}
+  if(!mcp){box.innerHTML=`<span class="help">TradingView에 연결된 화면에서만 검색할 수 있습니다.</span>`;return;}
+  box.innerHTML=`<span class="help">검색 중…</span>`;
+  try{
+    const res=await mcp.callTool(SERVER,T_SEARCH,{query:q,type_filter:"futures"},{cache:{staleTime:HOUR,gcTime:HOUR}});
+    const syms=((res.payload&&res.payload.data&&res.payload.data.symbols)||[]).filter(s=>s.exchange==="KRX");
+    if(!syms.length){box.innerHTML=`<span class="help">KRX 선물 결과가 없습니다. 다른 영문 약칭으로 검색해 보세요.</span>`;return;}
+    box.innerHTML=syms.map(s=>`<button class="btn" type="button" data-sym="${esc(s.symbol.split(":")[1])}">${esc(s.symbol)} · ${esc(s.description)}</button>`).join("");
+  }catch(e){box.innerHTML=`<span class="help">${errText(e)}</span>`;}
+});
+$("finderQuery").addEventListener("keydown",e=>{if(e.key==="Enter")$("finderGo").click();});
+$("finderResults").addEventListener("click",e=>{const b=e.target.closest("[data-sym]");if(!b)return;const i=+$("finderRow").value;const r=state.rows[i];if(!r)return;
+  r.tv=b.dataset.sym;r.fAuto=false;save();render();$("finderRow").value=String(i);
+  $("finderResults").innerHTML=`<span class="help">${esc(r.name)}에 ${esc(r.tv)}를 넣었습니다. "지금 갱신"을 누르면 선물가를 받아옵니다.</span>`;});
+
 $("applyPaste").addEventListener("click",()=>{
   const lines=$("paste").value.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);let ok=0,added=0,bad=[];
   lines.forEach(l=>{
-    const parts=l.split(/[\t,]+|\s{1,}(?=[\d.+-]+(?:\s|$))/).map(s=>s.trim()).filter(Boolean);
-    const nums=[];let label=[];parts.forEach(p=>{const n=parseFloat(p.replace(/,/g,""));if(/^[+-]?[\d.]+$/.test(p.replace(/,/g,""))&&!/^\d{6}$/.test(p)&&nums.length<3||(label.length&&!isNaN(n)&&nums.length<3&&!/^\d{6}$/.test(p)))nums.push(n);else label.push(p);});
+    const parts=l.split(/[\t,]+|\s+/).map(s=>s.trim()).filter(Boolean);
+    const nums=[],label=[];
+    parts.forEach(p=>{const raw=p.replace(/,/g,"");if(/^\d{6}$/.test(raw)&&!label.length&&!nums.length)label.push(raw);else if(/^[+-]?\d+(\.\d+)?$/.test(raw)&&label.length)nums.push(parseFloat(raw));else if(!nums.length)label.push(p);});
     const key=label.join(" ").trim();
     if(!key||nums.length<2){bad.push(l);return;}
     let row=state.rows.find(r=>r.code===key||r.name===key)||state.rows.find(r=>r.name.replace(/\s/g,"").toLowerCase()===key.replace(/\s/g,"").toLowerCase());
-    if(!row){row={name:/^\d{6}$/.test(key)?key:key,code:/^\d{6}$/.test(key)?key:"",mkt:"KOSPI",s:"",f:"",d:""};state.rows.push(row);added++;}
-    row.s=nums[0];row.f=nums[1];if(nums.length>2)row.d=nums[2];ok++;
+    if(!row){row={name:key,code:/^\d{6}$/.test(key)?key:"",mkt:"KOSPI",tv:"",s:"",f:"",d:"",sAuto:false,fAuto:false,fT:null};state.rows.push(row);added++;}
+    row.s=nums[0];row.f=nums[1];row.sAuto=false;row.fAuto=false;row.fT=null;if(nums.length>2)row.d=nums[2];ok++;
   });
-  state.sample=false;save();render();
+  save();render();
   $("pasteMsg").textContent=`${ok}개 반영`+(added?`, ${added}개 새 종목 추가`:"")+(bad.length?`. 형식을 읽지 못한 줄 ${bad.length}개: ${bad.slice(0,2).join(" / ")}`:"");
 });
 $("addRow").addEventListener("click",()=>{const n=$("newName").value.trim();if(!n){$("newName").focus();return;}
-  state.rows.push({name:n,code:$("newCode").value.trim(),mkt:$("newMkt").value,s:"",f:"",d:""});$("newName").value="";$("newCode").value="";save();render();});
+  state.rows.push({name:n,code:$("newCode").value.trim(),mkt:$("newMkt").value,tv:$("newTv").value.trim().toUpperCase(),s:"",f:"",d:"",sAuto:false,fAuto:false,fT:null});
+  ["newName","newCode","newTv"].forEach(id=>$(id).value="");save();render();});
 $("copyCsv").addEventListener("click",async e=>{
-  const p=readParams(),d=daysLeft();const head="종목,코드,현물가,선물가,예상배당,이론선물가,시장베이시스,이론베이시스,괴리,괴리율(%),신호,계약당순손익";
-  const body=state.rows.map(r=>[r,calc(r,p,d)]).filter(x=>x[1]).map(([r,c])=>[r.name,r.code,c.S,c.F,r.d||0,c.Fs.toFixed(1),c.mb.toFixed(0),c.tb.toFixed(1),c.gap.toFixed(1),c.gapPct.toFixed(3),c.sig,c.netC.toFixed(0)].join(","));
+  const p=readParams(),d=daysLeft();const head="종목,코드,선물심볼,현물가,선물가,예상배당,이론선물가,시장베이시스,이론베이시스,괴리,괴리율(%),신호,계약당순손익";
+  const body=state.rows.map(r=>[r,calc(r,p,d)]).filter(x=>x[1]).map(([r,c])=>[r.name,r.code,r.tv,c.S,c.F,r.d||0,c.Fs.toFixed(1),c.mb.toFixed(0),c.tb.toFixed(1),c.gap.toFixed(1),c.gapPct.toFixed(3),c.sig,c.netC.toFixed(0)].join(","));
   const txt=[head,...body].join("\n");const btn=e.currentTarget;
   try{await navigator.clipboard.writeText(txt);btn.textContent="복사됨";}catch(err){$("paste").value=txt;$("paste").closest("details").open=true;$("paste").select();btn.textContent="아래 칸에서 복사하세요";}
   setTimeout(()=>btn.textContent="결과 CSV 복사",2000);
 });
 
-buildMonths();load();restoreParams();renderHead();render();
+buildMonths();load();restoreParams();renderHead();render();initMcp();
 </script>
