@@ -170,6 +170,12 @@ details textarea{min-height:110px;font-family:var(--font-num);margin-top:8px}
     </div>
   </details>
 
+  <details id="diagBox">
+    <summary>연결 진단</summary>
+    <p class="help">시세가 안 나올 때 아래 기록을 복사해서 Claude에게 보내 주세요.</p>
+    <textarea id="diagLog" readonly aria-label="연결 진단 기록"></textarea>
+  </details>
+
   <details>
     <summary>계산 방법과 데이터</summary>
     <div class="formula">
@@ -313,11 +319,28 @@ function errText(e){
 }
 const FATAL=new Set(["server_not_connected","selection_required","needs_reauth","not_in_manifest","consent_required","approval_required","blocked_by_policy","not_granted","capability_disabled","capability_removed"]);
 
+const diag={lines:[]};
+function dlog(s){diag.lines.push(`[${new Date().toLocaleTimeString("ko-KR")}] ${s}`);if(diag.lines.length>40)diag.lines.shift();const el=$("diagLog");if(el)el.textContent=diag.lines.join("\n");}
+function payloadOf(res){
+  let p=res&&res.payload;
+  if(typeof p==="string"){try{p=JSON.parse(p);}catch(e){}}
+  if((p===undefined||typeof p==="string")&&res&&Array.isArray(res.content)){const t=res.content.find(b=>b.type==="text");if(t){try{p=JSON.parse(t.text);}catch(e){}}}
+  if(p&&typeof p==="object"&&p.data===undefined&&p.summary===undefined&&p.result&&typeof p.result==="object")p=p.result;
+  return p;
+}
+function call(tool,input,opts){
+  const o={...opts};
+  try{if(typeof AbortSignal!=="undefined"&&AbortSignal.timeout)o.signal=AbortSignal.timeout(90000);}catch(e){}
+  return mcp.callTool(SERVER,tool,input,o);
+}
 async function pool(items,n,fn){const out=[];let k=0;await Promise.all(Array.from({length:Math.min(n,items.length)},async()=>{while(k<items.length){const j=k++;out[j]=await fn(items[j]).catch(e=>({__err:e}));}}));return out;}
 
 async function refresh(force){
-  if(!mcp||busy)return; busy=true; $("refreshNow").disabled=true;
-  setSource("busy","<b>TradingView에서 시세 받는 중…</b>");
+  if(!mcp){dlog("mcp 기능을 쓸 수 없는 화면입니다.");return;}
+  if(busy){dlog("이미 받는 중이라 이번 요청은 건너뜁니다.");return;}
+  busy=true; $("refreshNow").disabled=true;
+  setSource("busy","<b>TradingView에서 시세 받는 중…</b> 처음이면 TradingView 사용 허용 창이 뜰 수 있습니다.");
+  dlog(`갱신 시작 (${force?"강제":"캐시 허용"})`);
   const opts={cache:{staleTime:force?0:55*60e3,gcTime:2*HOUR,refresh:!!force}};
   let okS=0,okF=0,failF=0,fatal=null,stamp=null;
   try{
@@ -326,25 +349,33 @@ async function refresh(force){
     for(let i=0;i<coded.length;i+=50){
       const chunk=coded.slice(i,i+50);
       try{
-        const res=await mcp.callTool(SERVER,T_BATCH,{symbols:chunk.map(r=>"KRX:"+r.code),columns:["close","update_mode"]},opts);
-        const data=(res.payload&&res.payload.data)||{};
+        const res=await call(T_BATCH,{symbols:chunk.map(r=>"KRX:"+r.code),columns:["close","update_mode"]},opts);
+        const p=payloadOf(res);const data=(p&&p.data)||{};
+        dlog(`현물 묶음 ${i/50+1}: 응답 키 [${p&&typeof p==="object"?Object.keys(p).join(", "):typeof p}], 시세 ${Object.keys(data).length}개`);
+        if(!Object.keys(data).length)dlog("응답 앞부분: "+JSON.stringify(res).slice(0,300));
         stamp=stamp||(res.cache&&res.cache.storedAt)||Date.now();
         chunk.forEach(r=>{const q=data["KRX:"+r.code];if(q&&q.close>0){r.s=q.close;r.sAuto=true;okS++;}});
-      }catch(e){if(FATAL.has(e.code)){fatal=e;throw e;}}
+      }catch(e){dlog(`현물 묶음 실패: ${e&&e.code} ${e&&e.message||""}`);if(FATAL.has(e.code)){fatal=e;throw e;}}
     }
     // 선물: 근월물 연속 심볼의 최근 1시간봉
     const fut=state.rows.filter(r=>r.tv);
-    const res=await pool(fut,4,r=>mcp.callTool(SERVER,T_OHLCV,{symbol:`KRX:${r.tv.toUpperCase()}1!`,interval:"1h",count:1,summary:true},opts));
+    let done=0;
+    const res=await pool(fut,4,r=>call(T_OHLCV,{symbol:`KRX:${r.tv.toUpperCase()}1!`,interval:"1h",count:1,summary:true},opts).finally(()=>{done++;setSource("busy",`<b>TradingView에서 시세 받는 중…</b> 현물 ${okS}종목 완료, 선물 ${done}/${fut.length}`);}));
+    let logged=0;
     res.forEach((x,j)=>{const r=fut[j];
-      if(x&&x.__err){failF++;if(FATAL.has(x.__err.code))fatal=x.__err;return;}
-      const s=x&&x.payload&&x.payload.summary;
-      if(s&&s.last_close>0){r.f=s.last_close;r.fAuto=true;r.fT=(s.last_t||0)*1000||null;okF++;}else failF++;});
+      if(x&&x.__err){failF++;if(logged++<3)dlog(`선물 ${r.tv} 실패: ${x.__err.code} ${x.__err.message||""}`);if(FATAL.has(x.__err.code))fatal=x.__err;return;}
+      const p=payloadOf(x);const s=p&&p.summary;
+      if(s&&s.last_close>0){r.f=s.last_close;r.fAuto=true;r.fT=(s.last_t||0)*1000||null;okF++;}
+      else{failF++;if(logged++<3)dlog(`선물 ${r.tv} 응답에 가격 없음: `+JSON.stringify(x).slice(0,300));}});
+    dlog(`완료: 현물 ${okS}, 선물 ${okF}, 선물 실패 ${failF}`);
     if(fatal)throw fatal;
     state.lastFetch=stamp||Date.now();save();
     setSource(okS?"ok":"warn",`<b>${hm(state.lastFetch)} 기준 시세</b> · 현물 ${okS}종목, 선물 ${okF}종목`+(failF?` · 선물 ${failF}종목은 받지 못함(심볼 확인)`:""),
       $("autoRefresh").checked?"1시간마다 자동으로 다시 받아옵니다. 시세는 TradingView 플랜에 따라 지연될 수 있습니다.":"자동 갱신이 꺼져 있습니다.");
   }catch(e){
-    setSource("warn",errText(e));
+    dlog(`중단: ${e&&e.code} ${e&&e.message||""}`);
+    setSource("warn",errText(e)+` <span class="sub">(코드: ${esc(e&&e.code||"알 수 없음")})</span>`);
+    $("diagBox").open=true;
   }finally{busy=false;$("refreshNow").disabled=false;render();}
 }
 function schedule(){clearInterval(timer);timer=null;if($("autoRefresh").checked&&mcp)timer=setInterval(()=>refresh(false),HOUR);}
@@ -352,6 +383,9 @@ document.addEventListener("visibilitychange",()=>{if(!document.hidden&&mcp&&$("a
 
 async function initMcp(){
   try{mcp=window.claude&&window.claude.use?await window.claude.use("mcp"):null;}catch(e){mcp=null;}
+  dlog(mcp?"mcp 기능 사용 가능":"mcp 기능 없음 (claude.ai 밖이거나 권한 없음)");
+  if(mcp){try{const lt=await mcp.listTools(SERVER);const s=(lt.servers||[])[0];
+    dlog(s?`커넥터 ${s.server}: 상태 ${s.authStatus}, 도구 [${(s.tools||[]).map(t=>t.name).join(", ")}]`:`커넥터 ${SERVER}가 목록에 없음 (연결 안 됨)`);}catch(e){dlog(`도구 목록 실패: ${e&&e.code} ${e&&e.message||""}`);}}
   if(!mcp){setSource("warn","<b>이 화면에서는 TradingView에 연결할 수 없습니다.</b> claude.ai에서 페이지를 열면 시세를 자동으로 받아옵니다. 지금은 가격을 직접 입력하거나 붙여넣어 계산할 수 있습니다.");return;}
   $("refreshNow").disabled=false;
   schedule();
