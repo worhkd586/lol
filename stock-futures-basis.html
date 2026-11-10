@@ -375,7 +375,11 @@ function errText(e){
 const FATAL=new Set(["server_not_connected","selection_required","needs_reauth","not_in_manifest","consent_required","approval_required","blocked_by_policy","not_granted","capability_disabled","capability_removed"]);
 
 const diag={lines:[]};
-function dlog(s){diag.lines.push(`[${new Date().toLocaleTimeString("ko-KR")}] ${s}`);if(diag.lines.length>40)diag.lines.shift();const el=$("diagLog");if(el)el.textContent=diag.lines.join("\n");}
+let dbRef=null,diagTimer=null;
+function dlog(s){diag.lines.push(`[${new Date().toLocaleTimeString("ko-KR")}] ${s}`);if(diag.lines.length>60)diag.lines.shift();const el=$("diagLog");if(el)el.textContent=diag.lines.join("\n");
+  clearTimeout(diagTimer);diagTimer=setTimeout(saveDiag,1500);}
+function saveDiag(){if(!dbRef)return;try{dbRef.doc("diag/latest").set({at:new Date().toISOString(),ua:navigator.userAgent.slice(0,160),lines:diag.lines.slice()}).catch(()=>{});}catch(e){}}
+(async()=>{try{const db=window.claude&&window.claude.use?await window.claude.use("db"):null;if(db){dbRef=db;dlog("진단 저장소 연결됨");}}catch(e){}})();
 function payloadOf(res){
   let p=res&&res.payload;
   if(typeof p==="string"){try{p=JSON.parse(p);}catch(e){}}
@@ -441,6 +445,7 @@ function schedule(){clearInterval(timer);timer=null;if($("autoRefresh").checked&
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&mcp&&$("autoRefresh").checked&&(!state.lastFetch||Date.now()-state.lastFetch>HOUR))refresh(false);});
 
 async function initMcp(){
+  dlog("페이지 시작, mcp 기능 요청");
   try{mcp=window.claude&&window.claude.use?await window.claude.use("mcp"):null;}catch(e){mcp=null;}
   dlog(mcp?"mcp 기능 사용 가능":"mcp 기능 없음 (claude.ai 밖이거나 권한 없음)");
   if(mcp){try{const lt=await mcp.listTools(SERVER);const s=(lt.servers||[])[0];
