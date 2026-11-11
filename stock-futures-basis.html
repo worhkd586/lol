@@ -97,7 +97,7 @@ details textarea{min-height:110px;font-family:var(--font-num);margin-top:8px}
 <div class="wrap">
   <header>
     <h1>주식선물 현선물 차익</h1>
-    <p>KRX 주식선물 288종목의 현물가와 근월물 선물가를 TradingView에서 받아와 시장 베이시스, 이론 베이시스, 괴리율, 거래비용을 뺀 차익거래 손익을 계산합니다. 1시간마다 다시 받아옵니다. 한 번 받는 데 TradingView 호출 한도 때문에 4분 정도 걸립니다.</p>
+    <p>KRX 주식선물 288종목의 현물가와 근월물 선물가를 TradingView에서 받아와 시장 베이시스, 이론 베이시스, 괴리율, 거래비용을 뺀 차익거래 손익을 계산합니다. 1시간마다 다시 받아옵니다. 현물가와 선물가는 종목마다 같은 시각의 1분봉 종가를 씁니다. 한 번 받는 데 TradingView 호출 한도 때문에 6~7분 걸리며, 받는 대로 표에 채워집니다.</p>
   </header>
 
   <section class="source" aria-live="polite">
@@ -185,7 +185,7 @@ details textarea{min-height:110px;font-family:var(--font-num);margin-top:8px}
       <div>매수차익(현물 매수 + 선물 매도) 순손익 <code>(F − F*) − 거래비용</code></div>
       <div>매도차익(현물 대차매도 + 선물 매수) 순손익 <code>(F* − F) − 거래비용 − S × 대차수수료 × d / 365</code></div>
       <div>계약당 손익은 주당 손익에 거래승수(기본 10주)를 곱한 값입니다.</div>
-      <p class="help">현물가는 TradingView <code>KRX:종목코드</code>의 현재가, 선물가는 근월물 연속 심볼 <code>KRX:심볼1!</code>의 최근 1시간봉 종가입니다. 두 값의 시각이 조금 다를 수 있어 표에 선물가 기준 시각을 함께 표시합니다. 선물가가 현물가와 10% 넘게 차이 나면 심볼이 잘못됐을 가능성이 커서 "심볼 확인"으로 표시하고 신호에서 뺍니다. 만기일은 결제월 둘째 목요일로 계산하며 휴장일 조정은 반영하지 않습니다. 거래세율, 수수료, 대차 가능 여부는 증권사와 시점에 따라 다릅니다. 투자 판단의 근거가 아닌 참고용 계산입니다.</p>
+      <p class="help">종목마다 근월물 연속 심볼 <code>KRX:심볼1!</code>에서 체결이 있었던 마지막 1분봉을 찾고, 같은 분의 현물 <code>KRX:종목코드</code> 1분봉을 가져와 두 종가를 씁니다. 그래서 괴리율은 같은 시점의 현물·선물 가격으로 계산됩니다. 그 분에 현물 체결이 없으면 직전 분을 쓰고 표에 현물 시각을 따로 표시합니다. 거래가 뜸한 선물은 기준 시각이 오래전일 수 있으니 확인하세요. 선물가가 현물가와 10% 넘게 차이 나면 심볼이 잘못됐을 가능성이 커서 "심볼 확인"으로 표시하고 신호에서 뺍니다. 만기일은 결제월 둘째 목요일로 계산하며 휴장일 조정은 반영하지 않습니다. 거래세율, 수수료, 대차 가능 여부는 증권사와 시점에 따라 다릅니다. 투자 판단의 근거가 아닌 참고용 계산입니다.</p>
     </div>
   </details>
 </div>
@@ -309,7 +309,7 @@ function calc(r,p,d){
 }
 
 const COLS=[
- {k:"name",t:"종목",l:1},{k:"tv",t:"선물 심볼",l:1},{k:"s",t:"현물가"},{k:"f",t:"선물가"},{k:"fT",t:"선물 기준",l:1},{k:"d",t:"예상배당"},
+ {k:"name",t:"종목",l:1},{k:"tv",t:"선물 심볼",l:1},{k:"s",t:"현물가"},{k:"f",t:"선물가"},{k:"fT",t:"기준 시각",l:1},{k:"d",t:"예상배당"},
  {k:"Fs",t:"이론선물가"},{k:"mb",t:"시장 베이시스"},{k:"tb",t:"이론 베이시스"},{k:"gap",t:"괴리"},{k:"gapPct",t:"괴리율"},
  {k:"cost",t:"거래비용/주"},{k:"sig",t:"신호",l:1},{k:"netC",t:"계약당 순손익"},{k:"x",t:""}
 ];
@@ -350,7 +350,7 @@ function render(){
     <td class="l"><input class="sym" aria-label="${esc(r.name)} 선물 심볼" id="tv-${i}" data-f="tv" type="text" value="${esc(r.tv)}" placeholder="—"></td>
     <td><input class="${r.sAuto?"auto":""}" aria-label="${esc(r.name)} 현물가" id="s-${i}" data-f="s" type="number" inputmode="decimal" value="${esc(r.s)}"></td>
     <td><input class="${r.fAuto?"auto":""}" aria-label="${esc(r.name)} 선물가" id="f-${i}" data-f="f" type="number" inputmode="decimal" value="${esc(r.f)}"></td>
-    <td class="l ts">${r.fAuto?hm(r.fT):(r.f?"직접 입력":"")}</td>
+    <td class="l ts" title="현물·선물 모두 이 시각 1분봉 종가">${r.fAuto?hm(r.fT)+(r.sT&&Math.abs(r.sT-r.fT)>60e3?` <span class="dim">(현물 ${hm(r.sT)})</span>`:""):(r.f?"직접 입력":"")}</td>
     <td><input class="div" aria-label="${esc(r.name)} 예상배당" id="d-${i}" data-f="d" type="number" inputmode="decimal" value="${esc(r.d)}" placeholder="0"></td>
     ${c?`<td class="num">${fmt(c.Fs,1)}</td><td class="num ${cls(c.mb)}">${sgn(c.mb,0)}</td><td class="num ${cls(c.tb)}">${sgn(c.tb,1)}</td>
     <td class="num ${cls(c.gap)}">${sgn(c.gap,1)}</td><td class="num ${cls(c.gapPct)}">${sgn(c.gapPct,2)}%</td><td class="num dim">${fmt(c.cost,1)}</td>
@@ -389,13 +389,14 @@ function payloadOf(res){
 }
 // TradingView MCP 한도(분당 약 100회)를 넘지 않도록 호출 시작 간격을 0.7초 이상으로 둔다
 let gate=Promise.resolve();
-function slot(){const p=gate.then(()=>new Promise(r=>setTimeout(r,700)));gate=p;return p;}
+function slot(){const p=gate.then(()=>new Promise(r=>setTimeout(r,650)));gate=p;return p;}
 async function call(tool,input,opts){
   await slot();
   const o={...opts};
   try{if(typeof AbortSignal!=="undefined"&&AbortSignal.timeout)o.signal=AbortSignal.timeout(90000);}catch(e){}
   return mcp.callTool(SERVER,tool,input,o);
 }
+let rT=null;function scheduleRender(){if(rT)return;rT=setTimeout(()=>{rT=null;const a=document.activeElement;if(a&&a.closest&&a.closest('#tbody'))return;render();},1500);}
 async function pool(items,n,fn){const out=[];let k=0;await Promise.all(Array.from({length:Math.min(n,items.length)},async()=>{while(k<items.length){const j=k++;out[j]=await fn(items[j]).catch(e=>({__err:e}));}}));return out;}
 
 async function refresh(force){
@@ -404,37 +405,42 @@ async function refresh(force){
   busy=true; $("refreshNow").disabled=true;
   setSource("busy","<b>TradingView에서 시세 받는 중…</b> 처음이면 TradingView 사용 허용 창이 뜰 수 있습니다.");
   dlog(`갱신 시작 (${force?"강제":"캐시 허용"})`);
-  const opts={cache:{staleTime:force?0:55*60e3,gcTime:2*HOUR,refresh:!!force}};
-  let okS=0,okF=0,failF=0,fatal=null,stamp=null;
+  // 선물 1분봉은 짧게만 캐시(같은 갱신 안에서 중복 호출 방지), 현물은 선물 시각에 맞춰 조회
+  const opts={cache:{staleTime:force?0:50*60e3,gcTime:2*HOUR,refresh:!!force}};
+  let ok=0,fail=0,stale=0,fatal=null,done=0,logged=0;
+  const rows=state.rows.filter(r=>r.tv&&/^[0-9A-Z]{6}$/.test(r.code));
+  const lastBar=p=>{const b=p&&p.bars;if(!b)return null;
+    if(Array.isArray(b)){const x=b[b.length-1];return x?{t:x.t,c:x.c}:null;}
+    if(Array.isArray(b.t)&&b.t.length){const i=b.t.length-1;return {t:b.t[i],c:b.c[i]};}return null;};
   try{
-    // 현물: 50개씩 묶어서
-    const coded=state.rows.filter(r=>/^[0-9A-Z]{6}$/.test(r.code));
-    for(let i=0;i<coded.length;i+=50){
-      const chunk=coded.slice(i,i+50);
+    await pool(rows,3,async r=>{
       try{
-        const res=await call(T_BATCH,{symbols:chunk.map(r=>"KRX:"+r.code),columns:["close","update_mode"]},opts);
-        const p=payloadOf(res);const data=(p&&p.data)||{};
-        dlog(`현물 묶음 ${i/50+1}: 응답 키 [${p&&typeof p==="object"?Object.keys(p).join(", "):typeof p}], 시세 ${Object.keys(data).length}개`);
-        if(!Object.keys(data).length)dlog("응답 앞부분: "+JSON.stringify(res).slice(0,300));
-        stamp=stamp||(res.cache&&res.cache.storedAt)||Date.now();
-        chunk.forEach(r=>{const q=data["KRX:"+r.code];if(q&&q.close>0){r.s=q.close;r.sAuto=true;okS++;}});
-      }catch(e){dlog(`현물 묶음 실패: ${e&&e.code} ${e&&e.message||""}`);if(FATAL.has(e.code)){fatal=e;throw e;}}
-    }
-    // 선물: 근월물 연속 심볼의 최근 1시간봉
-    const fut=state.rows.filter(r=>r.tv);
-    let done=0;
-    const res=await pool(fut,4,r=>call(T_OHLCV,{symbol:`KRX:${r.tv.toUpperCase()}1!`,interval:"1h",count:1,summary:true},opts).finally(()=>{done++;setSource("busy",`<b>TradingView에서 시세 받는 중…</b> 현물 ${okS}종목 완료, 선물 ${done}/${fut.length}`);}));
-    let logged=0;
-    res.forEach((x,j)=>{const r=fut[j];
-      if(x&&x.__err){failF++;if(logged++<3)dlog(`선물 ${r.tv} 실패: ${x.__err.code} ${x.__err.message||""}`);if(FATAL.has(x.__err.code))fatal=x.__err;return;}
-      const p=payloadOf(x);const s=p&&p.summary;
-      if(s&&s.last_close>0){r.f=s.last_close;r.fAuto=true;r.fT=(s.last_t||0)*1000||null;okF++;}
-      else{failF++;if(logged++<3)dlog(`선물 ${r.tv} 응답에 가격 없음: `+JSON.stringify(x).slice(0,300));}});
-    dlog(`완료: 현물 ${okS}, 선물 ${okF}, 선물 실패 ${failF}`);
-    if(fatal)throw fatal;
-    state.lastFetch=stamp||Date.now();save();
-    setSource(okS?"ok":"warn",`<b>${hm(state.lastFetch)} 기준 시세</b> · 현물 ${okS}종목, 선물 ${okF}종목`+(failF?` · 선물 ${failF}종목은 받지 못함(심볼 확인)`:""),
-      $("autoRefresh").checked?"1시간마다 자동으로 다시 받아옵니다. 시세는 TradingView 플랜에 따라 지연될 수 있습니다.":"자동 갱신이 꺼져 있습니다.");
+        // 1) 선물 근월물의 마지막 1분봉 (체결이 있었던 마지막 분)
+        const fr=await call(T_OHLCV,{symbol:`KRX:${r.tv.toUpperCase()}1!`,interval:"1m",count:1,format:"columns"},opts);
+        const fb=lastBar(payloadOf(fr));
+        if(!fb||!(fb.c>0))throw {code:"no_data",message:"선물 1분봉 없음"};
+        // 2) 같은 분의 현물 1분봉 (그 분에 체결이 없으면 직전 분)
+        const to=new Date((fb.t+59)*1000).toISOString().replace(/\.\d{3}Z$/,"Z");
+        const sr=await call(T_OHLCV,{symbol:`KRX:${r.code}`,interval:"1m",count:1,format:"columns",date_to:to},opts);
+        const sb=lastBar(payloadOf(sr));
+        if(!sb||!(sb.c>0))throw {code:"no_data",message:"현물 1분봉 없음"};
+        r.f=fb.c;r.s=sb.c;r.fAuto=true;r.sAuto=true;r.fT=fb.t*1000;r.sT=sb.t*1000;
+        if(Date.now()-r.fT>3*HOUR)stale++;
+        ok++;
+      }catch(e){
+        fail++;r.fAuto=false;r.sAuto=false;
+        if(logged++<5)dlog(`${r.name}(${r.tv}) 실패: ${e&&e.code} ${e&&e.message||""}`);
+        if(e&&FATAL.has(e.code)){fatal=e;}
+      }finally{
+        done++;setSource("busy",`<b>TradingView에서 시세 받는 중…</b> ${done}/${rows.length}종목 (현물·선물을 같은 1분봉으로 맞추는 중)`);
+        scheduleRender();
+      }
+    });
+    dlog(`완료: 성공 ${ok}, 실패 ${fail}, 선물 3시간 넘게 체결 없음 ${stale}`);
+    if(fatal&&!ok)throw fatal;
+    state.lastFetch=Date.now();save();
+    setSource(ok?"ok":"warn",`<b>${hm(state.lastFetch)} 갱신 완료</b> · ${ok}종목` +(fail?` · ${fail}종목 받지 못함`:"")+(stale?` · ${stale}종목은 선물 체결이 3시간 넘게 없음(기준 시각 확인)`:""),
+      ($("autoRefresh").checked?"1시간마다 자동으로 다시 받아옵니다. ":"자동 갱신이 꺼져 있습니다. ")+"각 종목의 현물가·선물가는 같은 1분봉 종가입니다. TradingView 플랜에 따라 지연될 수 있습니다.");
   }catch(e){
     dlog(`중단: ${e&&e.code} ${e&&e.message||""}`);
     setSource("warn",errText(e)+` <span class="sub">(코드: ${esc(e&&e.code||"알 수 없음")})</span>`);
